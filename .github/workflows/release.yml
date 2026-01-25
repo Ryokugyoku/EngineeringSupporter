@@ -89,7 +89,7 @@ jobs:
           $appInstallerPath = Join-Path $artifactRoot "EngineeringSupporter.appinstaller"
           $repo = "${{ github.repository }}"
           $lines = @(
-            '<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2017/2"',
+            '<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"',
             "  Version=`"$version`"",
             "  Uri=`"https://github.com/$repo/releases/latest/download/EngineeringSupporter.appinstaller`">",
             '',
@@ -98,10 +98,12 @@ jobs:
             "    Publisher=`"$publisher`"",
             "    Version=`"$version`"",
             '    ProcessorArchitecture="x64"',
-            "    Uri=`"https://github.com/$repo/releases/download/v$version/EngineeringSupporter.msix`" />",
+            "    Uri=`"EngineeringSupporter.msix`" />",
             '',
             '  <UpdateSettings>',
-            '    <OnLaunch HoursBetweenUpdateChecks="4" />',
+            '    <OnLaunch HoursBetweenUpdateChecks="0" />',
+            '    <AutomaticBackgroundTask />',
+            '    <ForceUpdateFromAnyVersion>true</ForceUpdateFromAnyVersion>',
             '  </UpdateSettings>',
             '</AppInstaller>'
           )
