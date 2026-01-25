@@ -48,20 +48,18 @@ jobs:
           }
           try {
             $password = $env:WINDOWS_PFX_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-            Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password -ErrorAction Stop
-            Write-Host "Certificate imported to store successfully."
+            $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password -ErrorAction Stop
+            $thumbprint = $cert.Thumbprint
+            echo "CERT_THUMBPRINT=$thumbprint" >> $env:GITHUB_OUTPUT
+            Write-Host "Certificate imported successfully. Thumbprint: $thumbprint"
           } catch {
             Write-Error "Failed to import certificate. Please verify if WINDOWS_PFX_PASSWORD is correct and matches the PFX file."
             throw $_
           }
+        id: import_cert
 
       - name: Publish MSIX (x64)
-        env:
-          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
-          if (-not $env:WINDOWS_PFX_PASSWORD) {
-            throw "WINDOWS_PFX_PASSWORD is not set."
-          }
           $appxDir = "$env:GITHUB_WORKSPACE\\artifacts\\windows\\"
           dotnet publish .\\EngineeringSupporter.WinUI\\EngineeringSupporter.WinUI.csproj `
             -c Release `
@@ -70,8 +68,7 @@ jobs:
             -p:WindowsPackageType=MSIX `
             -p:GenerateAppxPackageOnBuild=true `
             -p:AppxPackageSigningEnabled=true `
-            -p:PackageCertificateKeyFile="$env:GITHUB_WORKSPACE\\build\\signing.pfx" `
-            -p:PackageCertificatePassword="$env:WINDOWS_PFX_PASSWORD" `
+            -p:PackageCertificateThumbprint="${{ steps.import_cert.outputs.CERT_THUMBPRINT }}" `
             -p:AppxPackageDir="$appxDir"
 
       - name: Prepare MSIX + AppInstaller assets
