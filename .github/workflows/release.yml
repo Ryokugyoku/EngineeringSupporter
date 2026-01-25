@@ -33,9 +33,19 @@ jobs:
           }
           $pfxPath = "$env:GITHUB_WORKSPACE\\build\\signing.pfx"
           New-Item -ItemType Directory -Force -Path (Split-Path $pfxPath) | Out-Null
-          $bytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
+          $base64String = $env:WINDOWS_PFX_BASE64 -replace '\s',''
+          $bytes = [Convert]::FromBase64String($base64String)
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
           Write-Host "PFX written to $pfxPath"
+
+      - name: Import certificate
+        env:
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          $pfxPath = "$env:GITHUB_WORKSPACE\build\signing.pfx"
+          $password = $env:WINDOWS_PFX_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Write-Host "Certificate imported to store."
 
       - name: Publish MSIX (x64)
         env:
