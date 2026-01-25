@@ -69,7 +69,8 @@ jobs:
             -p:GenerateAppxPackageOnBuild=true `
             -p:AppxPackageSigningEnabled=true `
             -p:PackageCertificateThumbprint="${{ steps.import_cert.outputs.CERT_THUMBPRINT }}" `
-            -p:AppxPackageDir="$appxDir"
+            -p:AppxPackageDir="$appxDir" `
+            -p:AppxBundle=Never
 
       - name: Prepare MSIX + AppInstaller assets
         run: |
