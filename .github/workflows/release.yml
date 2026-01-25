@@ -113,49 +113,49 @@ jobs:
           name: windows-installers
           path: artifacts/windows/*
 
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Install MAUI workload
-        run: dotnet workload install maui
-
-      - name: Publish macOS app
-        run: |
-          dotnet publish EngineeringSupporter.Mac/EngineeringSupporter.Mac.csproj \
-            -c Release \
-            -f net10.0-maccatalyst \
-            -p:RuntimeIdentifier=maccatalyst-x64
-
-      - name: Create DMG
-        run: |
-          mkdir -p artifacts/macos
-          APP_PATH=$(find EngineeringSupporter.Mac/bin/Release -name "*.app" | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "App bundle not found." >&2
-            exit 1
-          fi
-          hdiutil create -volname "EngineeringSupporter" -srcfolder "$APP_PATH" \
-            -ov -format UDZO artifacts/macos/EngineeringSupporter-mac.dmg
-
-      - name: Upload macOS installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-installers
-          path: artifacts/macos/*
+#  build-macos:
+#    runs-on: macos-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Setup .NET
+#        uses: actions/setup-dotnet@v4
+#        with:
+#          dotnet-version: 10.0.x
+#
+#      - name: Install MAUI workload
+#        run: dotnet workload install maui
+#
+#      - name: Publish macOS app
+#        run: |
+#          dotnet publish EngineeringSupporter.Mac/EngineeringSupporter.Mac.csproj \
+#            -c Release \
+#            -f net10.0-maccatalyst \
+#            -p:RuntimeIdentifier=maccatalyst-x64
+#
+#      - name: Create DMG
+#        run: |
+#          mkdir -p artifacts/macos
+#          APP_PATH=$(find EngineeringSupporter.Mac/bin/Release -name "*.app" | head -n 1)
+#          if [ -z "$APP_PATH" ]; then
+#            echo "App bundle not found." >&2
+#            exit 1
+#          fi
+#          hdiutil create -volname "EngineeringSupporter" -srcfolder "$APP_PATH" \
+#            -ov -format UDZO artifacts/macos/EngineeringSupporter-mac.dmg
+#
+#      - name: Upload macOS installer
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: macos-installers
+#          path: artifacts/macos/*
 
   release:
     runs-on: ubuntu-latest
     needs:
       - build-windows
-      - build-macos
+#      - build-macos
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -189,4 +189,4 @@ jobs:
           artifacts: |
             artifacts/windows-installers/EngineeringSupporter.msix
             artifacts/windows-installers/EngineeringSupporter.appinstaller
-            artifacts/macos-installers/EngineeringSupporter-mac.dmg
+#            artifacts/macos-installers/EngineeringSupporter-mac.dmg
