@@ -168,12 +168,15 @@ jobs:
           python - <<'PY'
           import xml.etree.ElementTree as ET
           import os
+          ns = {"ns": "http://schemas.microsoft.com/appx/manifest/foundation/windows10"}
           tree = ET.parse("EngineeringSupporter.WinUI/Package.appxmanifest")
-          identity = tree.getroot().find("{http://schemas.microsoft.com/appx/manifest/foundation/windows10}Identity")
+          identity = tree.getroot().find("ns:Identity", ns)
+          if identity is None:
+              raise Exception("Identity element not found in manifest")
           version = identity.attrib["Version"]
           print(f"version={version}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"version={version}\\n")
+            f.write(f"version={version}\n")
           PY
 
       - name: Download artifacts
