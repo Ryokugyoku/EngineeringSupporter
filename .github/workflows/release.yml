@@ -43,9 +43,17 @@ jobs:
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
           $pfxPath = "$env:GITHUB_WORKSPACE\build\signing.pfx"
-          $password = $env:WINDOWS_PFX_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
-          Write-Host "Certificate imported to store."
+          if (-not $env:WINDOWS_PFX_PASSWORD) {
+            throw "WINDOWS_PFX_PASSWORD is not set."
+          }
+          try {
+            $password = $env:WINDOWS_PFX_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
+            Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password -ErrorAction Stop
+            Write-Host "Certificate imported to store successfully."
+          } catch {
+            Write-Error "Failed to import certificate. Please verify if WINDOWS_PFX_PASSWORD is correct and matches the PFX file."
+            throw $_
+          }
 
       - name: Publish MSIX (x64)
         env:
