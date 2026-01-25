@@ -72,23 +72,25 @@ jobs:
           $version = $identity.Version
 
           $appInstallerPath = Join-Path $artifactRoot "EngineeringSupporter.appinstaller"
-          @"
-<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2017/2"
-  Version="$version"
-  Uri="https://github.com/${{ github.repository }}/releases/latest/download/EngineeringSupporter.appinstaller">
-
-  <MainPackage
-    Name="$name"
-    Publisher="$publisher"
-    Version="$version"
-    ProcessorArchitecture="x64"
-    Uri="https://github.com/${{ github.repository }}/releases/download/v$version/EngineeringSupporter.msix" />
-
-  <UpdateSettings>
-    <OnLaunch HoursBetweenUpdateChecks="4" />
-  </UpdateSettings>
-</AppInstaller>
-"@ | Set-Content -Path $appInstallerPath -Encoding utf8
+          $repo = "${{ github.repository }}"
+          $lines = @(
+            '<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2017/2"',
+            "  Version=\"$version\"",
+            "  Uri=\"https://github.com/$repo/releases/latest/download/EngineeringSupporter.appinstaller\">",
+            '',
+            '  <MainPackage',
+            "    Name=\"$name\"",
+            "    Publisher=\"$publisher\"",
+            "    Version=\"$version\"",
+            '    ProcessorArchitecture="x64"',
+            "    Uri=\"https://github.com/$repo/releases/download/v$version/EngineeringSupporter.msix\" />",
+            '',
+            '  <UpdateSettings>',
+            '    <OnLaunch HoursBetweenUpdateChecks="4" />',
+            '  </UpdateSettings>',
+            '</AppInstaller>'
+          )
+          $lines -join "`n" | Set-Content -Path $appInstallerPath -Encoding utf8
 
       - name: Upload Windows installers
         uses: actions/upload-artifact@v4
