@@ -196,4 +196,5 @@ jobs:
           artifacts: |
             artifacts/windows-installers/EngineeringSupporter.msix
             artifacts/windows-installers/EngineeringSupporter.appinstaller
+            codesign.crt
 #            artifacts/macos-installers/EngineeringSupporter-mac.dmg
