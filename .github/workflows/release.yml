@@ -2,19 +2,18 @@ name: Build and Release Installers
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -24,178 +23,48 @@ jobs:
       - name: Install MAUI workload
         run: dotnet workload install maui
 
-      - name: Decode signing certificate
-        env:
-          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
-        run: |
-          if (-not $env:WINDOWS_PFX_BASE64) {
-            throw "WINDOWS_PFX_BASE64 is not set."
-          }
-          $pfxPath = "$env:GITHUB_WORKSPACE\\build\\signing.pfx"
-          New-Item -ItemType Directory -Force -Path (Split-Path $pfxPath) | Out-Null
-          $base64String = $env:WINDOWS_PFX_BASE64 -replace '\s',''
-          $bytes = [Convert]::FromBase64String($base64String)
-          [IO.File]::WriteAllBytes($pfxPath, $bytes)
-          Write-Host "PFX written to $pfxPath"
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
 
-      - name: Import certificate
-        env:
-          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+      - name: Publish WinUI
         run: |
-          $pfxPath = "$env:GITHUB_WORKSPACE\build\signing.pfx"
-          if (-not $env:WINDOWS_PFX_PASSWORD) {
-            throw "WINDOWS_PFX_PASSWORD is not set."
-          }
-          try {
-            $password = $env:WINDOWS_PFX_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-            $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password -ErrorAction Stop
-            $thumbprint = $cert.Thumbprint
-            echo "CERT_THUMBPRINT=$thumbprint" >> $env:GITHUB_OUTPUT
-            Write-Host "Certificate imported successfully. Thumbprint: $thumbprint"
-          } catch {
-            Write-Error "Failed to import certificate. Please verify if WINDOWS_PFX_PASSWORD is correct and matches the PFX file."
-            throw $_
-          }
-        id: import_cert
-
-      - name: Publish MSIX (x64)
-        run: |
-          $appxDir = "$env:GITHUB_WORKSPACE\\artifacts\\windows\\"
-          dotnet publish .\\EngineeringSupporter.WinUI\\EngineeringSupporter.WinUI.csproj `
+          dotnet publish EngineeringSupporter.WinUI/EngineeringSupporter.WinUI.csproj `
             -c Release `
             -f net10.0-windows10.0.19041.0 `
-            -p:Platform=x64 `
-            -p:WindowsPackageType=MSIX `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:AppxPackageSigningEnabled=true `
-            -p:PackageCertificateThumbprint="${{ steps.import_cert.outputs.CERT_THUMBPRINT }}" `
-            -p:AppxPackageDir="$appxDir" `
-            -p:AppxBundle=Never
+            -r win-x64 `
+            --self-contained true `
+            -p:WindowsPackageType=None `
+            -o ./publish
 
-      - name: Prepare MSIX + AppInstaller assets
+      - name: Velopack Pack
         run: |
-          $artifactRoot = "$env:GITHUB_WORKSPACE\\artifacts\\windows"
-          $msix = Get-ChildItem -Path $artifactRoot -Recurse -Filter *.msix | Select-Object -First 1
-          if (-not $msix) {
-            throw "MSIX not found under $artifactRoot"
-          }
-          Copy-Item $msix.FullName (Join-Path $artifactRoot "EngineeringSupporter.msix") -Force
+          vpk pack -u EngineeringSupporter -v ${{ github.ref_name }} -p ./publish -e EngineeringSupporter.WinUI.exe --packTitle "EngineeringSupporter"
 
-          [xml]$manifest = Get-Content "$env:GITHUB_WORKSPACE\\EngineeringSupporter.WinUI\\Package.appxmanifest"
-          $identity = $manifest.Package.Identity
-          $name = $identity.Name
-          $publisher = $identity.Publisher
-          $version = $identity.Version
-
-          $appInstallerPath = Join-Path $artifactRoot "EngineeringSupporter.appinstaller"
-          $repo = "${{ github.repository }}"
-          $lines = @(
-            '<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"',
-            "  Version=`"$version`"",
-            "  Uri=`"https://github.com/$repo/releases/latest/download/EngineeringSupporter.appinstaller`">",
-            '',
-            '  <MainPackage',
-            "    Name=`"$name`"",
-            "    Publisher=`"$publisher`"",
-            "    Version=`"$version`"",
-            '    ProcessorArchitecture="x64"',
-            "    Uri=`"EngineeringSupporter.msix`" />",
-            '',
-            '  <UpdateSettings>',
-            '    <OnLaunch HoursBetweenUpdateChecks="0" />',
-            '    <AutomaticBackgroundTask />',
-            '    <ForceUpdateFromAnyVersion>true</ForceUpdateFromAnyVersion>',
-            '  </UpdateSettings>',
-            '</AppInstaller>'
-          )
-          $lines -join "`n" | Set-Content -Path $appInstallerPath -Encoding utf8
-
-      - name: Upload Windows installers
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installers
-          path: artifacts/windows/*
-
-#  build-macos:
-#    runs-on: macos-latest
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#
-#      - name: Setup .NET
-#        uses: actions/setup-dotnet@v4
-#        with:
-#          dotnet-version: 10.0.x
-#
-#      - name: Install MAUI workload
-#        run: dotnet workload install maui
-#
-#      - name: Publish macOS app
-#        run: |
-#          dotnet publish EngineeringSupporter.Mac/EngineeringSupporter.Mac.csproj \
-#            -c Release \
-#            -f net10.0-maccatalyst \
-#            -p:RuntimeIdentifier=maccatalyst-x64
-#
-#      - name: Create DMG
-#        run: |
-#          mkdir -p artifacts/macos
-#          APP_PATH=$(find EngineeringSupporter.Mac/bin/Release -name "*.app" | head -n 1)
-#          if [ -z "$APP_PATH" ]; then
-#            echo "App bundle not found." >&2
-#            exit 1
-#          fi
-#          hdiutil create -volname "EngineeringSupporter" -srcfolder "$APP_PATH" \
-#            -ov -format UDZO artifacts/macos/EngineeringSupporter-mac.dmg
-#
-#      - name: Upload macOS installer
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: macos-installers
-#          path: artifacts/macos/*
+          name: windows-releases
+          path: ./Releases/*
 
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    needs:
-      - build-windows
-#      - build-macos
+    needs: [build-windows]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read version
-        id: version
-        run: |
-          python - <<'PY'
-          import xml.etree.ElementTree as ET
-          import os
-          ns = {"ns": "http://schemas.microsoft.com/appx/manifest/foundation/windows10"}
-          tree = ET.parse("EngineeringSupporter.WinUI/Package.appxmanifest")
-          identity = tree.getroot().find("ns:Identity", ns)
-          if identity is None:
-              raise Exception("Identity element not found in manifest")
-          version = identity.attrib["Version"]
-          print(f"version={version}")
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"version={version}\n")
-          PY
-
-      - name: Download artifacts
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: ./artifacts
 
       - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          generateReleaseNotes: true
-          allowUpdates: true
-          artifacts: |
-            artifacts/windows-installers/EngineeringSupporter.msix
-            artifacts/windows-installers/EngineeringSupporter.appinstaller
-            codesign.crt
-#            artifacts/macos-installers/EngineeringSupporter-mac.dmg
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            ./artifacts/windows-releases/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
