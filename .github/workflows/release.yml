@@ -100,7 +100,7 @@ jobs:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v0.0.1-main-{0}', github.sha) }}
           name: Release ${{ steps.version.outputs.version }}
           draft: false
-          prerelease: ${{ github.ref_name == 'main' }}
+          prerelease: false
           files: |
             ./artifacts/windows-releases/*
         env:
