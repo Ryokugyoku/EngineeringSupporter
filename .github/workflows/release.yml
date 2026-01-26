@@ -46,7 +46,7 @@ jobs:
             VERSION="${GITHUB_REF_NAME#v}"
           else
             # Fallback for manual trigger
-            VERSION="0.0.0-manual"
+            VERSION="0.0.1-manual"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
@@ -81,7 +81,7 @@ jobs:
             VERSION="${GITHUB_REF_NAME#v}"
           else
             # Fallback for manual trigger
-            VERSION="0.0.0-manual"
+            VERSION="0.0.1-manual"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
