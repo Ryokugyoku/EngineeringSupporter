@@ -14,7 +14,7 @@ public static class Program
         VelopackApp.Build().Run();
 
         // 2. 通常のWinUI起動プロセス
-        Application.Start((p) =>
+        Microsoft.UI.Xaml.Application.Start((p) =>
         {
             var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             SynchronizationContext.SetSynchronizationContext(context);
