@@ -34,11 +34,25 @@ jobs:
             -r win-x64 `
             --self-contained true `
             -p:WindowsPackageType=None `
+            -p:Platform=x64 `
             -o ./publish
+
+      - name: Determine Version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Strip 'v' prefix if exists
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            # Fallback for manual trigger
+            VERSION="0.0.0-manual"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Velopack Pack
         run: |
-          vpk pack -u EngineeringSupporter -v ${{ github.ref_name }} -p ./publish -e EngineeringSupporter.WinUI.exe --packTitle "EngineeringSupporter"
+          vpk pack -u EngineeringSupporter -v ${{ steps.version.outputs.version }} -p ./publish -e EngineeringSupporter.WinUI.exe --packTitle "EngineeringSupporter"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -48,6 +62,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     needs: [build-windows]
@@ -57,11 +72,24 @@ jobs:
         with:
           path: ./artifacts
 
+      - name: Determine Version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Strip 'v' prefix if exists
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            # Fallback for manual trigger
+            VERSION="0.0.0-manual"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
           files: |
