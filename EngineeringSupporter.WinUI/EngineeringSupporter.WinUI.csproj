@@ -17,6 +17,8 @@
         <EnableDefaultMauiItems>false</EnableDefaultMauiItems>
         <!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
         <WindowsPackageType Condition="'$(WindowsPackageType)'==''">MSIX</WindowsPackageType>
+        <ENABLE_WINUI_NATIVE_NATIVE_MAIN>false</ENABLE_WINUI_NATIVE_NATIVE_MAIN>
+        <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     </PropertyGroup>
 
     <ItemGroup>
